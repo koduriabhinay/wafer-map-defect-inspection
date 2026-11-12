@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+experiments/mlruns/
+experiments/results.json
+*.pt
+.DS_Store
