@@ -133,7 +133,7 @@ def _log_run(experiment_name, tracking_dir, params, metrics, history):
                     **{f"f1_class_{i}": v for i, v in enumerate(metrics["per_class_f1"])},
                 }
             )
-    else:  # honest fallback: local JSON log
+    else:  # fallback when mlflow is not installed: local JSON log
         path = os.path.join(tracking_dir, "experiment_log.jsonl")
         with open(path, "a") as f:
             f.write(json.dumps({"ts": time.time(), **flat}) + "\n")

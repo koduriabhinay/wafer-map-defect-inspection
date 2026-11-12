@@ -1,30 +1,31 @@
 # Wafer Map Defect Inspection Classifier
 
-> **SYNTHETIC-BY-DESIGN.** The full WM-811K dataset is several GBs and was not
-> downloaded for this project. All wafer maps here are **programmatically
-> generated** 64×64 binary defect masks whose 9 defect patterns mirror the
-> WM-811K class taxonomy (`center`, `donut`, `edge_ring`, `edge_loc`, `loc`,
-> `scratch`, `random`, `near_full`, `none`). They are useful for pipeline
-> development and demonstration — not for claims about real fab data.
+An ML pipeline for semiconductor wafer map defect inspection: classification,
+unsupervised pattern discovery and excursion-lot detection.
 
-A complete, tested ML pipeline for semiconductor wafer map defect inspection:
+**Data.** The wafer maps are synthetic. They are generated 64×64 binary defect
+masks whose 9 patterns follow the WM-811K class taxonomy (`center`, `donut`,
+`edge_ring`, `edge_loc`, `loc`, `scratch`, `random`, `near_full`, `none`). They
+are meant for developing and demonstrating the pipeline, not for conclusions
+about real fab data. See [Using real data](#using-real-data) to plug in WM-811K.
 
-1. **Supervised classification** — a small PyTorch CNN trained with
+## Components
+
+1. **Supervised classification**: a small PyTorch CNN trained with
    class-weighted cross-entropy (imbalanced 9-class taxonomy), rotation/flip
    augmentation, and a stratified train/val/test split with fixed seeds.
-2. **Unsupervised pattern discovery** — k-means clustering on CNN penultimate-layer
+2. **Unsupervised pattern discovery**: k-means clustering on CNN penultimate-layer
    embeddings of *unlabeled* maps, with silhouette analysis to select k.
-3. **Excursion-lot detection** — per-lot binomial tests of defect rate vs the
+3. **Excursion-lot detection**: per-lot binomial tests of defect rate vs the
    fab-wide baseline, with Benjamini–Hochberg FDR control at 1%.
-4. **Experiment tracking** — every training run is logged (MLflow when available,
+4. **Experiment tracking**: every training run is logged (MLflow when available,
    JSON-lines fallback otherwise) with accuracy, macro-F1, and per-class F1.
 
-## Results (actual run outputs)
+## Results
 
 Run: `python -m src.run_experiment --n 4500 --epochs 6 --seed 42`
-(subsampled for speed — see "Reproducibility" below).
+(a reduced run for speed; see Reproducibility below).
 
-<!-- METRICS: from experiments/results.json (run 2026-09-15, seed 42) -->
 | config | test accuracy | test macro-F1 |
 |---|---|---|
 | cnn_no_augment | 0.9756 | 0.9676 |
@@ -40,10 +41,10 @@ Per-class test F1 (best config, `cnn_augment`):
 | edge_ring | 1.0000 | scratch | 0.8939 | none | 0.9986 |
 
 Unsupervised discovery: silhouette selected **k=3** on 900 unlabeled test maps
-(cluster sizes 79 / 795 / 26 — a coarse grouping: the dominant "none" class
+(cluster sizes 79 / 795 / 26, a coarse grouping: the dominant "none" class
 forms the large cluster while defect patterns split into two smaller groups).
-Excursion detection: **31/300** lots flagged at BH FDR 1%
-(injected-excursion recall **1.000**, false-positive rate **0.0037**).
+Excursion detection: 31 of 300 lots flagged at BH FDR 1%
+(injected-excursion recall 1.000, false-positive rate 0.0037).
 
 ## Project structure
 
@@ -57,12 +58,12 @@ src/
   clustering.py  # k-means on embeddings + silhouette k-selection
   excursions.py  # binomial tests + Benjamini-Hochberg FDR
   run_experiment.py  # end-to-end experiment driver
-tests/           # 28 pytest tests (data, augmentation, model, clustering,
-                 #   excursions, metrics, full pipeline) — all deterministic
+tests/           # deterministic pytest suite (data, augmentation, model,
+                 #   clustering, excursions, metrics, full pipeline)
 experiments/     # results.json + mlruns/ (generated, gitignored)
 ```
 
-## How to run
+## Quickstart
 
 ```bash
 pip install -r requirements.txt
@@ -70,13 +71,13 @@ python -m src.run_experiment --n 4500 --epochs 6 --seed 42
 pytest tests/ -q
 ```
 
-View MLflow runs (if mlflow installed):
+View MLflow runs (when mlflow is installed):
 
 ```bash
 mlflow ui --backend-store-uri experiments/mlruns
 ```
 
-## Methodology notes
+## Methodology
 
 - **Data.** 64×64 binary masks; class priors are imbalanced (`none` ≈ 40%,
   `donut`/`near_full` ≈ 3% each), roughly mirroring WM-811K. Circular wafer
@@ -99,9 +100,13 @@ mlflow ui --backend-store-uri experiments/mlruns
 - The default run uses 4,500 synthetic maps and 6 epochs so the full pipeline
   finishes in minutes on CPU. Scale `--n`/`--epochs` up for a longer run.
 
-## Data provenance
+## Using real data
 
-No real fab data is used or distributed. If you have access to WM-811K, replace
-`src/data.py::generate_map` with a real loader keeping the same
+No real fab data is used or distributed. To train on WM-811K, replace
+`src/data.py::generate_map` with a loader that keeps the same
 `(X: (n,64,64) float32 in [0,1], y: (n,) int64)` contract and 9-class label
-mapping — the rest of the pipeline is data-source agnostic.
+mapping. The rest of the pipeline does not depend on the data source.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
