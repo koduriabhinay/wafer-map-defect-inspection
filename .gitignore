@@ -5,3 +5,6 @@ experiments/mlruns/
 experiments/results.json
 *.pt
 .DS_Store
+.venv/
+.env
+*.egg-info/
